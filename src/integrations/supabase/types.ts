@@ -14,7 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      catalogues: {
+        Row: {
+          file_size: number
+          file_url: string
+          id: string
+          name: string
+          page_count: number
+          updated_at: string
+          uploaded_at: string
+        }
+        Insert: {
+          file_size: number
+          file_url: string
+          id?: string
+          name: string
+          page_count: number
+          updated_at?: string
+          uploaded_at?: string
+        }
+        Update: {
+          file_size?: number
+          file_url?: string
+          id?: string
+          name?: string
+          page_count?: number
+          updated_at?: string
+          uploaded_at?: string
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          catalogue_id: string
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          selected_pages: number[]
+          status: string
+        }
+        Insert: {
+          catalogue_id: string
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          selected_pages: number[]
+          status?: string
+        }
+        Update: {
+          catalogue_id?: string
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          selected_pages?: number[]
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_catalogue_id_fkey"
+            columns: ["catalogue_id"]
+            isOneToOne: false
+            referencedRelation: "catalogues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
