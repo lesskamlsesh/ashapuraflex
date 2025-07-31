@@ -19,6 +19,7 @@ interface Catalogue {
 interface CataloguePageData {
   pageNumber: number;
   dataUrl: string;
+  aspectRatio: number;
 }
 
 const CatalogueApp = () => {
@@ -81,9 +82,13 @@ const CatalogueApp = () => {
           viewport: viewport
         }).promise;
 
+        // Calculate aspect ratio for dynamic layout
+        const aspectRatio = viewport.width / viewport.height;
+
         pages.push({
           pageNumber: i,
-          dataUrl: canvas.toDataURL()
+          dataUrl: canvas.toDataURL(),
+          aspectRatio: aspectRatio
         });
       }
 
@@ -141,49 +146,34 @@ const CatalogueApp = () => {
 
     try {
       // Save order to database
-      const { error } = await supabase
+      const { data: orderData, error } = await supabase
         .from('orders')
         .insert({
           catalogue_id: selectedCatalogue.id,
+          catalogue_name: selectedCatalogue.name,
           customer_name: customerInfo.name,
           customer_email: customerInfo.email,
           customer_phone: customerInfo.phone,
           selected_pages: Array.from(selectedItems).sort((a, b) => a - b),
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      // Get recipient email for mailto
-      const { data: settingsData } = await supabase
-        .from('admin_settings')
-        .select('setting_value')
-        .eq('setting_key', 'recipient_email')
-        .single();
-
-      const recipientEmail = settingsData?.setting_value || 'suratiyakeyursinh@gmail.com';
-      const selectedPages = Array.from(selectedItems).sort((a, b) => a - b);
-      
-      // Create mailto link
-      const subject = `Catalogue Order from ${customerInfo.name}`;
-      const body = `
-Customer Details:
-Name: ${customerInfo.name}
-Email: ${customerInfo.email}
-Phone: ${customerInfo.phone}
-
-Catalogue: ${selectedCatalogue.name}
-Selected Items (Page Numbers): ${selectedPages.join(', ')}
-Total Items: ${selectedItems.size}
-
-Order submitted on: ${new Date().toLocaleString()}
-      `;
-      
-      const mailtoLink = `mailto:${recipientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      window.location.href = mailtoLink;
+      // Call edge function to send notification email
+      try {
+        await supabase.functions.invoke('send-order-notification', {
+          body: { order_id: orderData.id }
+        });
+      } catch (emailError) {
+        console.warn('Failed to send notification email:', emailError);
+        // Don't fail the order if email fails
+      }
       
       toast({
         title: "Success",
-        description: "Order submitted successfully! An email has been prepared.",
+        description: "Order submitted successfully! You will receive a confirmation email.",
       });
 
       // Reset form
@@ -424,11 +414,14 @@ Order submitted on: ${new Date().toLocaleString()}
                 }`}
                 onClick={() => toggleItemSelection(page.pageNumber)}
               >
-                <div className="aspect-[3/4] relative">
+                <div 
+                  className="relative w-full"
+                  style={{ aspectRatio: page.aspectRatio }}
+                >
                   <img
                     src={page.dataUrl}
                     alt={`Page ${page.pageNumber}`}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                   
                   {/* Selection Overlay */}
