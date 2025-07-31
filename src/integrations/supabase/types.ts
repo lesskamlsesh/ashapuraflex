@@ -68,6 +68,7 @@ export type Database = {
       orders: {
         Row: {
           catalogue_id: string
+          catalogue_name: string | null
           created_at: string
           customer_email: string
           customer_name: string
@@ -78,6 +79,7 @@ export type Database = {
         }
         Insert: {
           catalogue_id: string
+          catalogue_name?: string | null
           created_at?: string
           customer_email: string
           customer_name: string
@@ -88,6 +90,7 @@ export type Database = {
         }
         Update: {
           catalogue_id?: string
+          catalogue_name?: string | null
           created_at?: string
           customer_email?: string
           customer_name?: string
