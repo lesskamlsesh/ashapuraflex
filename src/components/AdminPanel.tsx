@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Upload, FileText, Settings, Trash2, Edit, LogOut, Mail, Download } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Upload, FileText, Settings, Trash2, Edit, LogOut, Mail, Download, Search, Filter, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -14,6 +16,7 @@ interface Catalogue {
   file_size: number;
   page_count: number;
   uploaded_at: string;
+  cover_page: number;
 }
 
 interface Order {
@@ -22,6 +25,9 @@ interface Order {
   customer_name: string;
   customer_email: string;
   customer_phone: string;
+  company_name?: string;
+  address?: string;
+  notes?: string;
   selected_pages: number[];
   status: string;
   created_at: string;
@@ -36,10 +42,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'upload' | 'manage' | 'orders' | 'settings'>('upload');
   const [catalogues, setCatalogues] = useState<Catalogue[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [editingCatalogue, setEditingCatalogue] = useState<Catalogue | null>(null);
   const [newCatalogueName, setNewCatalogueName] = useState('');
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,6 +59,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     loadOrders();
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    filterAndSortOrders();
+  }, [orders, searchTerm, statusFilter, sortBy, sortOrder]);
 
   const loadCatalogues = async () => {
     const { data, error } = await supabase
@@ -271,6 +287,214 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     });
   };
 
+  const filterAndSortOrders = useCallback(() => {
+    let filtered = orders;
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(order =>
+        order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customer_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.catalogues?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Filter by status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(order => order.status === statusFilter);
+    }
+
+    // Sort orders
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+      
+      switch (sortBy) {
+        case 'customer_name':
+          aValue = a.customer_name;
+          bValue = b.customer_name;
+          break;
+        case 'created_at':
+          aValue = new Date(a.created_at);
+          bValue = new Date(b.created_at);
+          break;
+        case 'catalogue_name':
+          aValue = a.catalogues?.name || '';
+          bValue = b.catalogues?.name || '';
+          break;
+        default:
+          aValue = a.created_at;
+          bValue = b.created_at;
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1;
+      } else {
+        return aValue < bValue ? 1 : -1;
+      }
+    });
+
+    setFilteredOrders(filtered);
+  }, [orders, searchTerm, statusFilter, sortBy, sortOrder]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const pdfFile = files.find(file => file.type === 'application/pdf');
+
+    if (pdfFile) {
+      handleFileUploadFromDrop(pdfFile);
+    } else {
+      toast({
+        title: "Error",
+        description: "Please drop a PDF file",
+        variant: "destructive",
+      });
+    }
+  }, []);
+
+  const handleFileUploadFromDrop = async (file: File) => {
+    setIsUploading(true);
+
+    try {
+      // Upload file to Supabase Storage
+      const fileName = `${Date.now()}_${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('catalogues')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get PDF page count using PDF.js
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await (window as any).pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pageCount = pdf.numPages;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('catalogues')
+        .getPublicUrl(fileName);
+
+      // Save catalogue metadata to database
+      const { error: dbError } = await supabase
+        .from('catalogues')
+        .insert({
+          name: newCatalogueName || file.name.replace('.pdf', ''),
+          file_url: publicUrl,
+          file_size: file.size,
+          page_count: pageCount,
+        });
+
+      if (dbError) throw dbError;
+
+      toast({
+        title: "Success",
+        description: "Catalogue uploaded successfully",
+      });
+
+      setNewCatalogueName('');
+      loadCatalogues();
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload catalogue",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm('Are you sure you want to delete this order?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Order deleted successfully",
+      });
+
+      loadOrders();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete order",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const downloadOrderPDF = async (order: Order) => {
+    try {
+      // Get the catalogue
+      const catalogue = catalogues.find(c => c.id === order.catalogue_id);
+      if (!catalogue) {
+        toast({
+          title: "Error",
+          description: "Catalogue not found",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Load PDF and extract selected pages
+      const response = await fetch(catalogue.file_url);
+      const arrayBuffer = await response.arrayBuffer();
+      const pdf = await (window as any).pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      // For now, we'll create a simple text file with order details
+      // In a real implementation, you'd want to use a PDF library to create a new PDF with selected pages
+      const orderDetails = `
+Order Details
+=============
+Order ID: ${order.id}
+Customer: ${order.customer_name}
+Email: ${order.customer_email}
+Phone: ${order.customer_phone}
+${order.company_name ? `Company: ${order.company_name}` : ''}
+${order.address ? `Address: ${order.address}` : ''}
+${order.notes ? `Notes: ${order.notes}` : ''}
+
+Catalogue: ${catalogue.name}
+Selected Pages: ${order.selected_pages.join(', ')}
+Total Pages: ${order.selected_pages.length}
+Order Date: ${formatDate(order.created_at)}
+      `;
+
+      const blob = new Blob([orderDetails], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `order-${order.id}-details.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: "Order details downloaded",
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to download order details",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -329,17 +553,40 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                   onChange={(e) => setNewCatalogueName(e.target.value)}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">PDF File</label>
+              
+              {/* Drag and Drop Area */}
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  isDragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+                } ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
+                onDrop={handleDrop}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragOver(true);
+                }}
+                onDragLeave={() => setIsDragOver(false)}
+              >
+                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-lg font-medium text-gray-700 mb-2">
+                  Drag and drop your PDF here
+                </p>
+                <p className="text-sm text-gray-500 mb-4">
+                  Or click below to browse files
+                </p>
                 <Input
                   type="file"
                   accept=".pdf"
                   onChange={handleFileUpload}
                   disabled={isUploading}
+                  className="max-w-xs mx-auto"
                 />
               </div>
+              
               {isUploading && (
-                <p className="text-sm text-muted-foreground">Uploading and processing PDF...</p>
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  <p className="text-sm text-muted-foreground">Uploading and processing PDF...</p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -419,7 +666,47 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
         {activeTab === 'orders' && (
           <Card>
             <CardHeader>
-              <CardTitle>Customer Orders ({orders.length})</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span>Customer Orders ({filteredOrders.length})</span>
+                <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search orders..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 w-64"
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="processed">Processed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="created_at">Date</SelectItem>
+                      <SelectItem value="customer_name">Customer</SelectItem>
+                      <SelectItem value="catalogue_name">Catalogue</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  >
+                    {sortOrder === 'asc' ? '↑' : '↓'}
+                  </Button>
+                </div>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -427,23 +714,36 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Customer</TableHead>
-                      <TableHead>Email</TableHead>
+                      <TableHead>Contact</TableHead>
                       <TableHead>Catalogue</TableHead>
-                      <TableHead>Selected Pages</TableHead>
+                      <TableHead>Pages</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {orders.map((order) => (
+                    {filteredOrders.map((order) => (
                       <TableRow key={order.id}>
-                        <TableCell>{order.customer_name}</TableCell>
-                        <TableCell>{order.customer_email}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{order.customer_name}</div>
+                            {order.company_name && (
+                              <div className="text-sm text-gray-500">{order.company_name}</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div>{order.customer_email}</div>
+                            <div className="text-gray-500">{order.customer_phone}</div>
+                          </div>
+                        </TableCell>
                         <TableCell>{order.catalogues?.name}</TableCell>
                         <TableCell>
                           <span className="text-sm">
-                            {order.selected_pages.length} pages: {order.selected_pages.slice(0, 5).join(', ')}
-                            {order.selected_pages.length > 5 && '...'}
+                            {order.selected_pages.length} pages: {order.selected_pages.slice(0, 3).join(', ')}
+                            {order.selected_pages.length > 3 && '...'}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -456,6 +756,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                           </span>
                         </TableCell>
                         <TableCell>{formatDate(order.created_at)}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem onClick={() => downloadOrderPDF(order)}>
+                                <Download className="h-4 w-4 mr-2" />
+                                Download Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteOrder(order.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

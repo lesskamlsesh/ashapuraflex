@@ -37,6 +37,7 @@ export type Database = {
       }
       catalogues: {
         Row: {
+          cover_page: number | null
           file_size: number
           file_url: string
           id: string
@@ -46,6 +47,7 @@ export type Database = {
           uploaded_at: string
         }
         Insert: {
+          cover_page?: number | null
           file_size: number
           file_url: string
           id?: string
@@ -55,6 +57,7 @@ export type Database = {
           uploaded_at?: string
         }
         Update: {
+          cover_page?: number | null
           file_size?: number
           file_url?: string
           id?: string
@@ -67,35 +70,44 @@ export type Database = {
       }
       orders: {
         Row: {
+          address: string | null
           catalogue_id: string
           catalogue_name: string | null
+          company_name: string | null
           created_at: string
           customer_email: string
           customer_name: string
-          customer_phone: string | null
+          customer_phone: string
           id: string
+          notes: string | null
           selected_pages: number[]
           status: string
         }
         Insert: {
+          address?: string | null
           catalogue_id: string
           catalogue_name?: string | null
+          company_name?: string | null
           created_at?: string
           customer_email: string
           customer_name: string
-          customer_phone?: string | null
+          customer_phone?: string
           id?: string
+          notes?: string | null
           selected_pages: number[]
           status?: string
         }
         Update: {
+          address?: string | null
           catalogue_id?: string
           catalogue_name?: string | null
+          company_name?: string | null
           created_at?: string
           customer_email?: string
           customer_name?: string
-          customer_phone?: string | null
+          customer_phone?: string
           id?: string
+          notes?: string | null
           selected_pages?: number[]
           status?: string
         }

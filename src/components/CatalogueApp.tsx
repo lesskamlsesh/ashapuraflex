@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import AdminLogin from './AdminLogin';
 import AdminPanel from './AdminPanel';
+import CatalogueCard from './CatalogueCard';
 
 interface Catalogue {
   id: string;
@@ -14,6 +15,7 @@ interface Catalogue {
   file_size: number;
   page_count: number;
   uploaded_at: string;
+  cover_page?: number;
 }
 
 interface CataloguePageData {
@@ -29,7 +31,16 @@ const CatalogueApp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState(new Set<number>());
   const [currentView, setCurrentView] = useState<'home' | 'catalogue' | 'cart' | 'admin-login' | 'admin'>('home');
-  const [customerInfo, setCustomerInfo] = useState({ name: '', email: '', phone: '' });
+  const [customerInfo, setCustomerInfo] = useState({ 
+    name: '', 
+    email: '', 
+    phone: '', 
+    company_name: '', 
+    address: '', 
+    notes: '' 
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
@@ -126,10 +137,10 @@ const CatalogueApp = () => {
       return;
     }
     
-    if (!customerInfo.name || !customerInfo.email) {
+    if (!customerInfo.name || !customerInfo.email || !customerInfo.phone) {
       toast({
         title: "Error",
-        description: "Please fill in your name and email",
+        description: "Please fill in all required fields (Name, Email, Phone)",
         variant: "destructive",
       });
       return;
@@ -144,6 +155,8 @@ const CatalogueApp = () => {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
       // Save order to database
       const { data: orderData, error } = await supabase
@@ -154,6 +167,9 @@ const CatalogueApp = () => {
           customer_name: customerInfo.name,
           customer_email: customerInfo.email,
           customer_phone: customerInfo.phone,
+          company_name: customerInfo.company_name,
+          address: customerInfo.address,
+          notes: customerInfo.notes,
           selected_pages: Array.from(selectedItems).sort((a, b) => a - b),
         })
         .select()
@@ -171,15 +187,22 @@ const CatalogueApp = () => {
         // Don't fail the order if email fails
       }
       
-      toast({
-        title: "Success",
-        description: "Order submitted successfully! You will receive a confirmation email.",
-      });
-
-      // Reset form
-      setSelectedItems(new Set());
-      setCustomerInfo({ name: '', email: '', phone: '' });
-      setCurrentView('home');
+      setShowSuccess(true);
+      
+      // Auto-reset after 3 seconds
+      setTimeout(() => {
+        setSelectedItems(new Set());
+        setCustomerInfo({ 
+          name: '', 
+          email: '', 
+          phone: '', 
+          company_name: '', 
+          address: '', 
+          notes: '' 
+        });
+        setShowSuccess(false);
+        setCurrentView('home');
+      }, 3000);
     } catch (error) {
       console.error('Error submitting order:', error);
       toast({
@@ -187,6 +210,7 @@ const CatalogueApp = () => {
         description: "Failed to submit order. Please try again.",
         variant: "destructive",
       });
+      setIsSubmitting(false);
     }
   };
 
@@ -195,7 +219,16 @@ const CatalogueApp = () => {
     setPdfPages([]);
     setSelectedItems(new Set());
     setCurrentView('home');
-    setCustomerInfo({ name: '', email: '', phone: '' });
+    setCustomerInfo({ 
+      name: '', 
+      email: '', 
+      phone: '', 
+      company_name: '', 
+      address: '', 
+      notes: '' 
+    });
+    setIsSubmitting(false);
+    setShowSuccess(false);
   };
 
   const handleAdminLogin = () => {
@@ -248,27 +281,13 @@ const CatalogueApp = () => {
                 <p className="text-gray-500">Please check back later or contact the administrator.</p>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {catalogues.map((catalogue) => (
-                  <div
-                    key={catalogue.id}
-                    className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => loadCatalogue(catalogue)}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-800">{catalogue.name}</h3>
-                        <p className="text-sm text-gray-500">{catalogue.page_count} pages</p>
-                      </div>
-                      <FileText className="h-8 w-8 text-blue-600" />
-                    </div>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Uploaded: {new Date(catalogue.uploaded_at).toLocaleDateString()}
-                    </p>
-                    <Button className="w-full">
-                      Browse Catalogue
-                    </Button>
-                  </div>
+                  <CatalogueCard 
+                    key={catalogue.id} 
+                    catalogue={catalogue} 
+                    onSelect={() => loadCatalogue(catalogue)} 
+                  />
                 ))}
               </div>
             )}
@@ -279,6 +298,22 @@ const CatalogueApp = () => {
   }
 
   if (currentView === 'cart') {
+    if (showSuccess) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-8 text-center max-w-md mx-auto">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="h-8 w-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Congratulations!</h2>
+            <p className="text-gray-600 mb-4">Your order has been confirmed successfully!</p>
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto"></div>
+            <p className="text-sm text-gray-500 mt-2">Redirecting...</p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gray-50 p-4">
         <div className="max-w-4xl mx-auto">
@@ -288,6 +323,7 @@ const CatalogueApp = () => {
               <Button
                 variant="outline"
                 onClick={() => setCurrentView('catalogue')}
+                disabled={isSubmitting}
               >
                 <Eye className="h-5 w-5 mr-2" />
                 Back to Catalogue
@@ -304,6 +340,7 @@ const CatalogueApp = () => {
                       <button
                         onClick={() => toggleItemSelection(pageNum)}
                         className="text-red-600 hover:text-red-700"
+                        disabled={isSubmitting}
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -320,18 +357,45 @@ const CatalogueApp = () => {
                     placeholder="Full Name *"
                     value={customerInfo.name}
                     onChange={(e) => setCustomerInfo({...customerInfo, name: e.target.value})}
+                    disabled={isSubmitting}
+                    required
                   />
                   <Input
                     type="email"
                     placeholder="Email Address *"
                     value={customerInfo.email}
                     onChange={(e) => setCustomerInfo({...customerInfo, email: e.target.value})}
+                    disabled={isSubmitting}
+                    required
                   />
                   <Input
                     type="tel"
-                    placeholder="Phone Number"
+                    placeholder="Phone Number *"
                     value={customerInfo.phone}
                     onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})}
+                    disabled={isSubmitting}
+                    required
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Company Name (Optional)"
+                    value={customerInfo.company_name}
+                    onChange={(e) => setCustomerInfo({...customerInfo, company_name: e.target.value})}
+                    disabled={isSubmitting}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Address (Optional)"
+                    value={customerInfo.address}
+                    onChange={(e) => setCustomerInfo({...customerInfo, address: e.target.value})}
+                    disabled={isSubmitting}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Notes (Optional)"
+                    value={customerInfo.notes}
+                    onChange={(e) => setCustomerInfo({...customerInfo, notes: e.target.value})}
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -341,13 +405,24 @@ const CatalogueApp = () => {
               <Button
                 onClick={handleSubmitOrder}
                 className="flex-1"
+                disabled={isSubmitting}
               >
-                <Send className="h-5 w-5 mr-2" />
-                Submit Order
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-5 w-5 mr-2" />
+                    Submit Order
+                  </>
+                )}
               </Button>
               <Button
                 variant="outline"
                 onClick={resetApp}
+                disabled={isSubmitting}
               >
                 Start Over
               </Button>
@@ -444,15 +519,15 @@ const CatalogueApp = () => {
         </div>
       )}
 
-      {/* Floating Cart Button (Mobile) */}
+      {/* Floating Order Button */}
       {selectedItems.size > 0 && (
-        <div className="fixed bottom-6 right-6 md:hidden">
+        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
           <button
             onClick={() => setCurrentView('cart')}
-            className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg flex items-center gap-2 transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 transition-all hover:scale-105 animate-fade-in"
           >
-            <ShoppingCart className="h-6 w-6" />
-            <span className="font-bold">{selectedItems.size}</span>
+            <ShoppingCart className="h-5 w-5" />
+            <span className="font-semibold">Order ({selectedItems.size})</span>
           </button>
         </div>
       )}
