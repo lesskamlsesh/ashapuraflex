@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { PDFDocument } from 'pdf-lib';
 
 interface Catalogue {
   id: string;
@@ -447,35 +448,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
         return;
       }
 
-      // Load PDF and extract selected pages
+      // Download the original PDF
       const response = await fetch(catalogue.file_url);
-      const arrayBuffer = await response.arrayBuffer();
-      const pdf = await (window as any).pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-      // For now, we'll create a simple text file with order details
-      // In a real implementation, you'd want to use a PDF library to create a new PDF with selected pages
-      const orderDetails = `
-Order Details
-=============
-Order ID: ${order.id}
-Customer: ${order.customer_name}
-Email: ${order.customer_email}
-Phone: ${order.customer_phone}
-${order.company_name ? `Company: ${order.company_name}` : ''}
-${order.address ? `Address: ${order.address}` : ''}
-${order.notes ? `Notes: ${order.notes}` : ''}
-
-Catalogue: ${catalogue.name}
-Selected Pages: ${order.selected_pages.join(', ')}
-Total Pages: ${order.selected_pages.length}
-Order Date: ${formatDate(order.created_at)}
-      `;
-
-      const blob = new Blob([orderDetails], { type: 'text/plain' });
+      const pdfBytes = await response.arrayBuffer();
+      
+      // Load the PDF
+      const originalPdf = await PDFDocument.load(pdfBytes);
+      
+      // Create a new PDF with only selected pages
+      const newPdf = await PDFDocument.create();
+      
+      // Copy selected pages to the new PDF
+      const pageIndices = order.selected_pages.map(pageNum => pageNum - 1); // Convert to 0-based index
+      const copiedPages = await newPdf.copyPages(originalPdf, pageIndices);
+      
+      // Add pages to the new PDF
+      copiedPages.forEach((page) => newPdf.addPage(page));
+      
+      // Serialize the PDF
+      const newPdfBytes = await newPdf.save();
+      
+      // Create download
+      const blob = new Blob([newPdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `order-${order.id}-details.txt`;
+      a.download = `${order.customer_name}-selected-pages-${order.id}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -483,13 +481,13 @@ Order Date: ${formatDate(order.created_at)}
 
       toast({
         title: "Success",
-        description: "Order details downloaded",
+        description: "PDF with selected pages downloaded",
       });
     } catch (error) {
       console.error('Download error:', error);
       toast({
         title: "Error",
-        description: "Failed to download order details",
+        description: "Failed to generate PDF. Please try again.",
         variant: "destructive",
       });
     }
@@ -766,7 +764,7 @@ Order Date: ${formatDate(order.created_at)}
                             <DropdownMenuContent>
                               <DropdownMenuItem onClick={() => downloadOrderPDF(order)}>
                                 <Download className="h-4 w-4 mr-2" />
-                                Download Details
+                                Download PDF
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleDeleteOrder(order.id)}
