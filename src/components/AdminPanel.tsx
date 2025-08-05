@@ -435,6 +435,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     }
   };
 
+  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Order status updated successfully",
+      });
+
+      loadOrders();
+    } catch (error) {
+      console.error('Status update error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update order status",
+        variant: "destructive",
+      });
+    }
+  };
+
   const downloadOrderPDF = async (order: Order) => {
     try {
       // Get the catalogue
@@ -745,13 +770,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            order.status === 'processed' ? 'bg-green-100 text-green-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {order.status}
-                          </span>
+                          <Select 
+                            value={order.status} 
+                            onValueChange={(value) => handleStatusUpdate(order.id, value)}
+                          >
+                            <SelectTrigger className="w-28">
+                              <SelectValue>
+                                <span className={`px-2 py-1 rounded-full text-xs ${
+                                  order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                  order.status === 'processed' ? 'bg-green-100 text-green-800' :
+                                  order.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                                  order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {order.status}
+                                </span>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="processed">Processed</SelectItem>
+                              <SelectItem value="completed">Completed</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell>{formatDate(order.created_at)}</TableCell>
                         <TableCell>

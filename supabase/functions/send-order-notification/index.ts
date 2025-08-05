@@ -64,100 +64,49 @@ const handler = async (req: Request): Promise<Response> => {
 
     const recipientEmail = settingsData?.setting_value || 'suratiyakeyursinh@gmail.com';
 
-    // Create detailed email content
+    // Create simple notification email content
     const emailContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">
-          New Catalogue Order Received
+          📋 New Catalogue Order Received
         </h2>
         
-        <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #334155; margin-top: 0;">Order Information</h3>
-          <p><strong>Order ID:</strong> ${order.id}</p>
-          <p><strong>Order Date:</strong> ${new Date(order.created_at).toLocaleString()}</p>
-          <p><strong>Status:</strong> ${order.status}</p>
-        </div>
-
-        <div style="background-color: #f1f5f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #334155; margin-top: 0;">Customer Details</h3>
-          <ul style="list-style: none; padding: 0;">
-            <li style="margin: 8px 0;"><strong>Name:</strong> ${order.customer_name}</li>
-            <li style="margin: 8px 0;"><strong>Email:</strong> ${order.customer_email}</li>
-            <li style="margin: 8px 0;"><strong>Phone:</strong> ${order.customer_phone || 'Not provided'}</li>
-            ${order.company_name ? `<li style="margin: 8px 0;"><strong>Company:</strong> ${order.company_name}</li>` : ''}
-            ${order.address ? `<li style="margin: 8px 0;"><strong>Address:</strong> ${order.address}</li>` : ''}
-            ${order.notes ? `<li style="margin: 8px 0;"><strong>Notes:</strong> ${order.notes}</li>` : ''}
-          </ul>
-        </div>
-
-        <div style="background-color: #ecfdf5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #334155; margin-top: 0;">Order Details</h3>
+        <div style="background-color: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <h3 style="color: #0ea5e9; margin-top: 0;">Quick Summary</h3>
+          <p><strong>Customer:</strong> ${order.customer_name}</p>
+          <p><strong>Email:</strong> ${order.customer_email}</p>
+          <p><strong>Phone:</strong> ${order.customer_phone || 'Not provided'}</p>
+          ${order.company_name ? `<p><strong>Company:</strong> ${order.company_name}</p>` : ''}
           <p><strong>Catalogue:</strong> ${order.catalogues?.name || order.catalogue_name || 'Unknown'}</p>
-          <p><strong>Selected Pages:</strong> ${order.selected_pages.join(', ')}</p>
-          <p><strong>Total Pages:</strong> ${order.selected_pages.length}</p>
+          <p><strong>Pages:</strong> ${order.selected_pages.join(', ')} (${order.selected_pages.length} total)</p>
         </div>
 
-        <div style="background-color: #fef2f2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444;">
-          <p style="margin: 0; color: #dc2626;">
-            <strong>Note:</strong> Please process this order and prepare the selected pages for the customer.
+        ${order.address || order.notes ? `
+        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          ${order.address ? `<p><strong>📍 Address:</strong> ${order.address}</p>` : ''}
+          ${order.notes ? `<p><strong>📝 Notes:</strong> ${order.notes}</p>` : ''}
+        </div>
+        ` : ''}
+
+        <div style="background-color: #ecfdf5; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+          <p style="margin: 0; color: #059669;">
+            <strong>Order ID:</strong> ${order.id} | <strong>Date:</strong> ${new Date(order.created_at).toLocaleString()}
           </p>
         </div>
+        
+        <p style="color: #6b7280; font-size: 14px; text-align: center;">
+          Access your admin panel to manage this order and download the selected pages.
+        </p>
       </div>
     `;
 
-    // Create PDF attachment with selected pages (simplified approach)
-    let pdfAttachment = null;
-    try {
-      if (order.catalogues?.file_url) {
-        // Create a summary document instead of actual PDF pages
-        const summaryContent = `
-Order Summary - ${order.customer_name}
-=====================================
-
-Order ID: ${order.id}
-Date: ${new Date(order.created_at).toLocaleString()}
-
-Customer Information:
-- Name: ${order.customer_name}
-- Email: ${order.customer_email}
-- Phone: ${order.customer_phone || 'Not provided'}
-${order.company_name ? `- Company: ${order.company_name}` : ''}
-${order.address ? `- Address: ${order.address}` : ''}
-${order.notes ? `- Notes: ${order.notes}` : ''}
-
-Order Details:
-- Catalogue: ${order.catalogues.name || order.catalogue_name}
-- Selected Pages: ${order.selected_pages.join(', ')}
-- Total Pages: ${order.selected_pages.length}
-
-Please prepare the following pages from the catalogue:
-${order.selected_pages.map(page => `- Page ${page}`).join('\n')}
-        `;
-
-        const encodedContent = btoa(summaryContent);
-        pdfAttachment = {
-          filename: `order-${order.id}-summary.txt`,
-          content: encodedContent,
-          type: 'text/plain'
-        };
-      }
-    } catch (error) {
-      console.error('Error creating PDF attachment:', error);
-      // Continue without attachment if there's an error
-    }
-
-    const emailData: any = {
-      from: "Digital Catalogue <onboarding@resend.dev>",
+    // Send simple notification email (no attachments)
+    await resend.emails.send({
+      from: "Catalogue Orders <onboarding@resend.dev>",
       to: [recipientEmail],
-      subject: `New Order from ${order.customer_name} - ${order.selected_pages.length} pages`,
+      subject: `🆕 New Order: ${order.customer_name} - ${order.selected_pages.length} pages`,
       html: emailContent,
-    };
-
-    if (pdfAttachment) {
-      emailData.attachments = [pdfAttachment];
-    }
-
-    await resend.emails.send(emailData);
+    });
 
     console.log(`Order notification sent for order ${order_id}`);
 
