@@ -179,12 +179,33 @@ const CatalogueApp = () => {
 
       // Call edge function to send notification email
       try {
-        await supabase.functions.invoke('send-order-notification', {
+        console.log('Sending order notification for order:', orderData.id);
+        const notificationResult = await supabase.functions.invoke('send-order-notification', {
           body: { order_id: orderData.id }
         });
+        
+        if (notificationResult.error) {
+          console.error('Notification function error:', notificationResult.error);
+          toast({
+            title: "Order Submitted",
+            description: "Order submitted successfully, but notification failed to send.",
+            variant: "default",
+          });
+        } else {
+          console.log('Notification sent successfully:', notificationResult.data);
+          toast({
+            title: "Order Submitted",
+            description: "Order submitted and notification sent successfully!",
+            variant: "default",
+          });
+        }
       } catch (emailError) {
-        console.warn('Failed to send notification email:', emailError);
-        // Don't fail the order if email fails
+        console.error('Failed to send notification email:', emailError);
+        toast({
+          title: "Order Submitted",
+          description: "Order submitted successfully, but notification failed to send.",
+          variant: "default",
+        });
       }
       
       setShowSuccess(true);
