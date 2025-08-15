@@ -68,6 +68,150 @@ export type Database = {
         }
         Relationships: []
       }
+      invoices: {
+        Row: {
+          created_at: string
+          customer_email: string
+          customer_name: string
+          due_date: string | null
+          id: string
+          invoice_number: string
+          order_id: string | null
+          paid_date: string | null
+          status: string
+          tax_amount: number | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_email: string
+          customer_name: string
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          order_id?: string | null
+          paid_date?: string | null
+          status?: string
+          tax_amount?: number | null
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_email?: string
+          customer_name?: string
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          order_id?: string | null
+          paid_date?: string | null
+          status?: string
+          tax_amount?: number | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_type: string
+          file_url: string
+          id: string
+          job_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_type: string
+          file_url: string
+          id?: string
+          job_id: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_type?: string
+          file_url?: string
+          id?: string
+          job_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_files_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          deadline: string | null
+          description: string | null
+          id: string
+          order_id: string | null
+          priority: number
+          started_at: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          priority?: number
+          started_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          order_id?: string | null
+          priority?: number
+          started_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           address: string | null
@@ -121,15 +265,46 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_invoice_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "manager" | "designer" | "finance"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -256,6 +431,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "manager", "designer", "finance"],
+    },
   },
 } as const
