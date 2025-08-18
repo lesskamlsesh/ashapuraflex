@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Users, ShoppingCart, FileText, DollarSign, TrendingUp, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import DesignerManagement from '@/components/DesignerManagement';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -263,6 +264,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <TabsList>
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
+            <TabsTrigger value="designers">Designers</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
@@ -376,6 +378,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="designers" className="space-y-4">
+            <DesignerManagement onDesignersUpdate={loadDashboardData} />
           </TabsContent>
 
           <TabsContent value="users" className="space-y-4">
