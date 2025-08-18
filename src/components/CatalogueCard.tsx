@@ -63,11 +63,11 @@ const CatalogueCard: React.FC<CatalogueCardProps> = ({ catalogue, onSelect }) =>
   };
 
   return (
-    <div className="group bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-all duration-300 cursor-pointer transform hover:-translate-y-1">
-      <div className="relative h-48 bg-muted/50 flex items-center justify-center">
+    <div className="group bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:-translate-y-1">
+      <div className="relative h-48 bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         {isLoadingCover ? (
-          <div className="flex flex-col items-center text-muted-foreground">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-2"></div>
+          <div className="flex flex-col items-center text-gray-500">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
             <span className="text-sm">Loading preview...</span>
           </div>
         ) : coverImage ? (
@@ -77,38 +77,37 @@ const CatalogueCard: React.FC<CatalogueCardProps> = ({ catalogue, onSelect }) =>
             className="w-full h-full object-contain p-2"
           />
         ) : (
-          <FileText className="h-20 w-20 text-muted-foreground" />
+          <FileText className="h-20 w-20 text-blue-400" />
         )}
         
         {/* Hover overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-          <div className="bg-background rounded-full p-3 transform scale-90 group-hover:scale-100 transition-transform">
-            <Eye className="h-6 w-6 text-primary" />
+        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+          <div className="bg-white rounded-full p-3 transform scale-90 group-hover:scale-100 transition-transform">
+            <Eye className="h-6 w-6 text-blue-600" />
           </div>
         </div>
       </div>
       
-      <div className="p-4 md:p-6">
+      <div className="p-6">
         <div className="mb-4">
-          <h3 className="text-base md:text-lg font-bold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+          <h3 className="text-lg font-bold text-gray-800 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
             {catalogue.name}
           </h3>
-          <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
+          <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
             <span className="flex items-center">
               <FileText className="h-4 w-4 mr-1" />
               {catalogue.page_count} pages
             </span>
             <span>{formatFileSize(catalogue.file_size)}</span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-gray-400">
             Uploaded: {new Date(catalogue.uploaded_at).toLocaleDateString()}
           </p>
         </div>
         
         <Button 
           onClick={onSelect}
-          className="w-full"
-          size="sm"
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-2 rounded-lg transition-all duration-200"
         >
           Browse Catalogue
         </Button>
