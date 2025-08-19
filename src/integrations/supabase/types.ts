@@ -265,6 +265,54 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          availability_status: string | null
+          bio: string | null
+          created_at: string
+          email: string | null
+          experience_years: number | null
+          full_name: string | null
+          hourly_rate: number | null
+          id: string
+          phone: string | null
+          skills: string[] | null
+          specialization: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          availability_status?: string | null
+          bio?: string | null
+          created_at?: string
+          email?: string | null
+          experience_years?: number | null
+          full_name?: string | null
+          hourly_rate?: number | null
+          id?: string
+          phone?: string | null
+          skills?: string[] | null
+          specialization?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          availability_status?: string | null
+          bio?: string | null
+          created_at?: string
+          email?: string | null
+          experience_years?: number | null
+          full_name?: string | null
+          hourly_rate?: number | null
+          id?: string
+          phone?: string | null
+          skills?: string[] | null
+          specialization?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

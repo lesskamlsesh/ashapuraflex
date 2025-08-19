@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { CalendarIcon, KanbanSquare, Users, Plus, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import JobAssignment from '@/components/JobAssignment';
 
 interface ManagerDashboardProps {
   onLogout: () => void;

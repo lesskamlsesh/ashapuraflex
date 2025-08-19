@@ -9,6 +9,7 @@ import { Users, ShoppingCart, FileText, DollarSign, TrendingUp, CheckCircle, XCi
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import DesignerManagement from '@/components/DesignerManagement';
+import JobAssignment from '@/components/JobAssignment';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -321,63 +322,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </TabsContent>
 
           <TabsContent value="jobs" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Job Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead>Assigned To</TableHead>
-                      <TableHead>Deadline</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {jobs.map((job) => (
-                      <TableRow key={job.id}>
-                        <TableCell className="font-medium">{job.title}</TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(job.status)}>
-                            {job.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getPriorityColor(job.priority)}>
-                            {getPriorityLabel(job.priority)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{job.assigned_to || 'Unassigned'}</TableCell>
-                        <TableCell>
-                          {job.deadline ? new Date(job.deadline).toLocaleDateString() : 'No deadline'}
-                        </TableCell>
-                        <TableCell>
-                          <Select 
-                            value={job.priority.toString()} 
-                            onValueChange={(value) => updateJobPriority(job.id, parseInt(value))}
-                          >
-                            <SelectTrigger className="w-24">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">1</SelectItem>
-                              <SelectItem value="2">2</SelectItem>
-                              <SelectItem value="3">3</SelectItem>
-                              <SelectItem value="4">4</SelectItem>
-                              <SelectItem value="5">5</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            <JobAssignment userRole="admin" />
           </TabsContent>
 
           <TabsContent value="designers" className="space-y-4">
