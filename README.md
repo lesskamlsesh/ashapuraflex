@@ -1,8 +1,20 @@
-# Welcome to your Lovable project
+# Ashapuraflex - Modern Web Application
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/9746305a-b968-4e9d-82f9-9d3e2ad3deda
+
+## Overview
+
+Ashapuraflex is a modern web application built with cutting-edge technologies for optimal performance and developer experience.
+
+## Features
+
+- ⚡ Lightning-fast development with Vite
+- 🎨 Beautiful UI components with shadcn-ui
+- 📱 Fully responsive design
+- 🔒 Type-safe with TypeScript
+- 🎯 Modern React patterns
 
 ## How can I edit this code?
 
@@ -71,3 +83,11 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT License - feel free to use this project for your own purposes.
